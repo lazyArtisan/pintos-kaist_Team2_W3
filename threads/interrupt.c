@@ -141,7 +141,7 @@ intr_enable (void) {
 
 	   See [IA32-v2b] "STI" and [IA32-v3a] 5.8.1 "Masking Maskable
 	   Hardware Interrupts". */
-	asm volatile ("sti");
+	asm volatile ("sti");//
 
 	return old_level;
 }
@@ -268,7 +268,6 @@ intr_yield_on_return (void) {
 	ASSERT (intr_context ());
 	yield_on_return = true;
 }
-
 /* 8259A Programmable Interrupt Controller. */
 
 /* Every PC has two 8259A Programmable Interrupt Controller (PIC)

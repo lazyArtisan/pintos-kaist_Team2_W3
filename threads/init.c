@@ -94,7 +94,7 @@ main (void) {
 
 	/* Initialize interrupt handlers. */
 	intr_init ();
-	timer_init ();
+	timer_init ();//PIT를 초기화
 	kbd_init ();
 	input_init ();
 #ifdef USERPROG
@@ -105,7 +105,7 @@ main (void) {
 	thread_start ();
 	serial_init_queue ();
 	timer_calibrate ();
-
+	
 #ifdef FILESYS
 	/* Initialize file system. */
 	disk_init ();

@@ -14,6 +14,9 @@
 #ifdef USERPROG
 #include "userprog/process.h"
 #endif
+//made by swpark
+struct list sleep_list;
+
 
 /* Random value for struct thread's `magic' member.
    Used to detect stack overflow.  See the big comment at the top
@@ -27,6 +30,7 @@
 /* List of processes in THREAD_READY state, that is, processes
    that are ready to run but not actually running. */
 static struct list ready_list;
+
 
 /* Idle thread. */
 static struct thread *idle_thread;
@@ -107,6 +111,7 @@ thread_init (void) {
 
 	/* Init the globla thread context */
 	lock_init (&tid_lock);
+	list_init (&sleep_list);
 	list_init (&ready_list);
 	list_init (&destruction_req);
 
@@ -185,20 +190,20 @@ thread_create (const char *name, int priority,
 	ASSERT (function != NULL);
 
 	/* Allocate thread. */
-	t = palloc_get_page (PAL_ZERO);
+	t = palloc_get_page (PAL_ZERO);//메모리 페이지 할당
 	if (t == NULL)
 		return TID_ERROR;
 
 	/* Initialize thread. */
 	init_thread (t, name, priority);
-	tid = t->tid = allocate_tid ();
+	tid = t->tid = allocate_tid ();//스레드 ID
 
 	/* Call the kernel_thread if it scheduled.
 	 * Note) rdi is 1st argument, and rsi is 2nd argument. */
 	t->tf.rip = (uintptr_t) kernel_thread;
 	t->tf.R.rdi = (uint64_t) function;
 	t->tf.R.rsi = (uint64_t) aux;
-	t->tf.ds = SEL_KDSEG;
+	t->tf.ds = SEL_KDSEG;//SEL_KDSEG는 커널 데이터 세그먼트
 	t->tf.es = SEL_KDSEG;
 	t->tf.ss = SEL_KDSEG;
 	t->tf.cs = SEL_KCSEG;
@@ -219,7 +224,7 @@ thread_create (const char *name, int priority,
 void
 thread_block (void) {
 	ASSERT (!intr_context ());
-	ASSERT (intr_get_level () == INTR_OFF);
+	ASSERT (intr_get_level () == INTR_OFF); 
 	thread_current ()->status = THREAD_BLOCKED;
 	schedule ();
 }
@@ -233,16 +238,23 @@ thread_block (void) {
    it may expect that it can atomically unblock a thread and
    update other data. */
 void
-thread_unblock (struct thread *t) {
+thread_unblock (struct thread *t) {//
 	enum intr_level old_level;
 
 	ASSERT (is_thread (t));
 
 	old_level = intr_disable ();
 	ASSERT (t->status == THREAD_BLOCKED);
-	list_push_back (&ready_list, &t->elem);
+	list_insert_ordered(&ready_list, &t->elem, priority_compare, NULL);
 	t->status = THREAD_READY;
 	intr_set_level (old_level);
+}
+
+bool priority_compare(const struct list_elem* a, const struct list_elem* b, void* aux UNUSED){
+	struct thread *thread_a = list_entry(a, struct thread, elem);
+	struct thread *thread_b = list_entry(b, struct thread, elem);
+
+	return thread_a->priority > thread_b->priority;//priority가 큰게 앞으로 와야 하므로 
 }
 
 /* Returns the name of the running thread. */
@@ -256,7 +268,7 @@ thread_name (void) {
    See the big comment at the top of thread.h for details. */
 struct thread *
 thread_current (void) {
-	struct thread *t = running_thread ();
+	struct thread *t = running_thread ();//스레드의 시작주소를 반환
 
 	/* Make sure T is really a thread.
 	   If either of these assertions fire, then your thread may
@@ -307,7 +319,50 @@ thread_yield (void) {
 	do_schedule (THREAD_READY);
 	intr_set_level (old_level);
 }
+/*
+	1. 각 스레드의 start + ticks 를 따로 저장해 놓아야 한다.
+	2. start + ticks를 오름차순으로 list에 넣는다
+*/
+void sleep(int64_t ticks){
+	struct thread *curr = thread_current ();
+	enum intr_level old_level;
+	old_level = intr_disable ();
+	curr->time = ticks; // wake_up에 필요한 시간
+	if (curr != idle_thread){
+		
+		list_insert_ordered(&sleep_list, &curr->elem, thread_compare, NULL);
+		thread_block();
+	}
+	
+	intr_set_level (old_level);
+	}
 
+/*
+	1. if(curr-> time < timer_ticks()) 이면 ready_list에 다시 넣는다
+	2. start + ticks를 오름차순으로 저장해놓고 timer_ticks보다 
+		if(start + ticks > timer_ticks) 
+*/
+void wake_up(int64_t ticks){
+	enum intr_level old_level;
+	old_level = intr_disable ();
+	while (!list_empty(&sleep_list))
+	{	
+		struct thread* t = list_entry(list_front(&sleep_list), struct thread, elem);
+		if (t->time > ticks)//맨 앞에 온 것이 깨어날 시간이 아니면 뒤는 더 이상 검사안해도 되므로 검사안함
+			break;
+		list_pop_front(&sleep_list);
+		thread_unblock(t);
+	}
+	intr_set_level (old_level);
+}
+
+
+bool thread_compare(const struct list_elem* a, const struct list_elem* b, void* aux UNUSED){
+	struct thread *thread_a = list_entry(a, struct thread, elem);
+	struct thread *thread_b = list_entry(b, struct thread, elem);
+
+	return thread_a->time < thread_b->time;//true 면 a가 더작음 
+}
 /* Sets the current thread's priority to NEW_PRIORITY. */
 void
 thread_set_priority (int new_priority) {
@@ -539,7 +594,7 @@ do_schedule(int status) {
 }
 
 static void
-schedule (void) {
+schedule (void) {//현재
 	struct thread *curr = running_thread ();
 	struct thread *next = next_thread_to_run ();
 
