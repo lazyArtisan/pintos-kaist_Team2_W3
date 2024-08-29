@@ -91,7 +91,7 @@ struct thread {
 	enum thread_status status;          /* Thread state. */
 	char name[16];                      /* Name (for debugging purposes). */
 	int priority;                       /* Priority. */
-
+	int64_t time;							/* wake_up할 때까지 남은 시간 */
 	/* Shared between thread.c and synch.c. */
 	struct list_elem elem;              /* List element. */
 
@@ -142,5 +142,12 @@ int thread_get_recent_cpu (void);
 int thread_get_load_avg (void);
 
 void do_iret (struct intr_frame *tf);
+
+void sleep(int64_t ticks);
+void wake_up(int64_t ticks);
+bool thread_time_compare(const struct list_elem* a, const struct list_elem* b, void* aux UNUSED);
+bool priority_compare(const struct list_elem* a, const struct list_elem* b, void* aux UNUSED);
+void running_compare();
+extern struct list sleep_list;
 
 #endif /* threads/thread.h */

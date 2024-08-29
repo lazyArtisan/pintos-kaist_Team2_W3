@@ -7,7 +7,6 @@
 #include "threads/io.h"
 #include "threads/synch.h"
 #include "threads/thread.h"
-
 /* See [8254] for hardware details of the 8254 timer chip. */
 
 #if TIMER_FREQ < 19
@@ -31,7 +30,9 @@ static void real_time_sleep (int64_t num, int32_t denom);
 
 /* Sets up the 8254 Programmable Interval Timer (PIT) to
    interrupt PIT_FREQ times per second, and registers the
-   corresponding interrupt. */
+   corresponding interrupt. 
+*/
+
 void
 timer_init (void) {
 	/* 8254 input frequency divided by TIMER_FREQ, rounded to
@@ -42,7 +43,7 @@ timer_init (void) {
 	outb (0x40, count & 0xff);
 	outb (0x40, count >> 8);
 
-	intr_register_ext (0x20, timer_interrupt, "8254 Timer");
+	intr_register_ext (0x20, timer_interrupt, "8254 Timer");//PIT에서 인터럽트가 발생하면 timer_interrupt함수를 호출하도록함
 }
 
 /* Calibrates loops_per_tick, used to implement brief delays. */
@@ -88,13 +89,25 @@ timer_elapsed (int64_t then) {
 }
 
 /* Suspends execution for approximately TICKS timer ticks. */
+/*1. timer_init 에서 PIT에서 인터럽트가 발생할 때 timer_interrupt를 호출하도록 설정
+  2. timer_interrupt는 ticks값을 1씩 올림
+  3. timer_sleep이 호출되면 ticks로 설정된 수에 도달하기 전까지는 반복해서 thread_yield <--이 부분이 busy wating
+  4. // while (timer_elapsed (start) < ticks){
+		// }
+	//	thread_yield ();
+*/
+/* 구현
+	1. thread_yield 대신 sleep
+	int64_t start = timer_ticks ();
+	while (timer_elapsed (start) < ticks){
+		}
+		thread_yield ();
+*/
 void
 timer_sleep (int64_t ticks) {
-	int64_t start = timer_ticks ();
-
 	ASSERT (intr_get_level () == INTR_ON);
-	while (timer_elapsed (start) < ticks)
-		thread_yield ();
+	int64_t start = timer_ticks();
+	sleep(start + ticks);
 }
 
 /* Suspends execution for approximately MS milliseconds. */
@@ -120,12 +133,14 @@ void
 timer_print_stats (void) {
 	printf ("Timer: %"PRId64" ticks\n", timer_ticks ());
 }
+
 
 /* Timer interrupt handler. */
 static void
 timer_interrupt (struct intr_frame *args UNUSED) {
 	ticks++;
 	thread_tick ();
+	wake_up(ticks);
 }
 
 /* Returns true if LOOPS iterations waits for more than one timer

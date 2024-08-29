@@ -162,7 +162,7 @@ thread_tick (void) {
 /* Prints thread statistics. */
 void
 thread_print_stats (void) {
-	printf ("Thread: %lld idle ticks, %lld kernel ticks, %lld user ticks\n",
+	msg ("Thread: %lld idle ticks, %lld kernel ticks, %lld user ticks\n",
 			idle_ticks, kernel_ticks, user_ticks);
 }
 
@@ -208,10 +208,15 @@ thread_create (const char *name, int priority,
 	t->tf.ss = SEL_KDSEG;
 	t->tf.cs = SEL_KCSEG;
 	t->tf.eflags = FLAG_IF;
-
 	/* Add to run queue. */
 	thread_unblock (t);
-
+	printf("create후 실행 스레드 : %s 	우선순위 : %d	상태 : %d\n", thread_current()->name, thread_current()->priority, thread_current()->status);
+	struct list_elem *e;
+	for(e = list_begin(&ready_list); e != list_end(&ready_list); e = list_next(e)){
+		struct thread *t = list_entry(e, struct thread, elem);
+		printf("create후 대기 스레드 : %s	우선순위 : %d	상태 : %d\n", t->name, t->priority, t->status);
+	}
+	running_compare();
 	return tid;
 }
 
@@ -240,15 +245,25 @@ thread_block (void) {
 void
 thread_unblock (struct thread *t) {//
 	enum intr_level old_level;
-
 	ASSERT (is_thread (t));
-
 	old_level = intr_disable ();
 	ASSERT (t->status == THREAD_BLOCKED);
+	
 	list_insert_ordered(&ready_list, &t->elem, priority_compare, NULL);
 	t->status = THREAD_READY;
 	intr_set_level (old_level);
+	
 }
+
+void running_compare()
+{
+	//실행 중인 스레드의 우선순위가 ready_list의 맨 앞에 있는 스레드의 우선순위 보다 작으면 교체
+	if(!list_empty(&ready_list) && thread_current()->priority < list_entry(list_front(&ready_list), struct thread, elem)-> priority)
+	{
+		thread_yield();
+	}
+}
+
 
 bool priority_compare(const struct list_elem* a, const struct list_elem* b, void* aux UNUSED){
 	struct thread *thread_a = list_entry(a, struct thread, elem);
@@ -310,12 +325,11 @@ void
 thread_yield (void) {
 	struct thread *curr = thread_current ();
 	enum intr_level old_level;
-
 	ASSERT (!intr_context ());
 
 	old_level = intr_disable ();
 	if (curr != idle_thread)
-		list_push_back (&ready_list, &curr->elem);
+		list_insert_ordered(&ready_list, &curr->elem, priority_compare, NULL);
 	do_schedule (THREAD_READY);
 	intr_set_level (old_level);
 }
@@ -330,7 +344,7 @@ void sleep(int64_t ticks){
 	curr->time = ticks; // wake_up에 필요한 시간
 	if (curr != idle_thread){
 		
-		list_insert_ordered(&sleep_list, &curr->elem, thread_compare, NULL);
+		list_insert_ordered(&sleep_list, &curr->elem, thread_time_compare, NULL);
 		thread_block();
 	}
 	
@@ -357,7 +371,7 @@ void wake_up(int64_t ticks){
 }
 
 
-bool thread_compare(const struct list_elem* a, const struct list_elem* b, void* aux UNUSED){
+bool thread_time_compare(const struct list_elem* a, const struct list_elem* b, void* aux UNUSED){
 	struct thread *thread_a = list_entry(a, struct thread, elem);
 	struct thread *thread_b = list_entry(b, struct thread, elem);
 
@@ -367,6 +381,7 @@ bool thread_compare(const struct list_elem* a, const struct list_elem* b, void* 
 void
 thread_set_priority (int new_priority) {
 	thread_current ()->priority = new_priority;
+	running_compare();
 }
 
 /* Returns the current thread's priority. */
@@ -579,7 +594,7 @@ thread_launch (struct thread *th) {
 /* Schedules a new process. At entry, interrupts must be off.
  * This function modify current thread's status to status and then
  * finds another thread to run and switches to it.
- * It's not safe to call printf() in the schedule(). */
+ * It's not safe to call msg() in the schedule(). */
 static void
 do_schedule(int status) {
 	ASSERT (intr_get_level () == INTR_OFF);
@@ -594,7 +609,7 @@ do_schedule(int status) {
 }
 
 static void
-schedule (void) {//현재
+schedule (void) {
 	struct thread *curr = running_thread ();
 	struct thread *next = next_thread_to_run ();
 
@@ -624,10 +639,15 @@ schedule (void) {//현재
 			ASSERT (curr != next);
 			list_push_back (&destruction_req, &curr->elem);
 		}
-
 		/* Before switching the thread, we first save the information
 		 * of current running. */
 		thread_launch (next);
+		printf("런치 후 실행 스레드 : %s 	우선순위 : %d	상태 : %d\n", thread_current()->name, thread_current()->priority, thread_current()->status);
+		struct list_elem *e;
+		for(e = list_begin(&ready_list); e != list_end(&ready_list); e = list_next(e)){
+			struct thread *t = list_entry(e, struct thread, elem);
+			printf("런치 후 대기 스레드 : %s 	우선순위 : %d	상태 : %d\n", t->name, t->priority, t->status);
+	}
 	}
 }
 

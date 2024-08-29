@@ -99,6 +99,7 @@ signal (struct intq *q UNUSED, struct thread **waiter) {
 			|| (waiter == &q->not_full && !intq_full (q)));
 
 	if (*waiter != NULL) {
+		printf("signal에서 unblock\n");
 		thread_unblock (*waiter);
 		*waiter = NULL;
 	}
