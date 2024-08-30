@@ -2,6 +2,12 @@
     "files.associations": {
         "process.h": "c",
         "timer.h": "c",
-        "thread.h": "c"
+        "thread.h": "c",
+        "*.tcc": "c",
+        "fstream": "c",
+        "ostream": "c",
+        "synch.h": "c",
+        "debug.h": "c",
+        "list.h": "c"
     }
 }

@@ -67,6 +67,7 @@ sema_down (struct semaphore *sema) {
 	old_level = intr_disable ();
 	while (sema->value == 0) {
 		list_push_back (&sema->waiters, &thread_current ()->elem);
+		//list_insert_ordered(&sema->waiters, &thread_current()->elem, priority_compare, NULL);
 		thread_block ();
 	}
 	sema->value--;
@@ -105,14 +106,17 @@ sema_try_down (struct semaphore *sema) {
 void
 sema_up (struct semaphore *sema) {
 	enum intr_level old_level;
-
 	ASSERT (sema != NULL);
-
 	old_level = intr_disable ();
-	if (!list_empty (&sema->waiters))//waiters가 안비어있으면 unblock
+	
+	if (!list_empty (&sema->waiters)){
+		list_sort(&sema->waiters, priority_compare, NULL);
 		thread_unblock (list_entry (list_pop_front (&sema->waiters),
 					struct thread, elem));
+	}					
 	sema->value++;
+	running_compare();
+	
 	intr_set_level (old_level);
 }
 
@@ -187,7 +191,6 @@ lock_acquire (struct lock *lock) {
 	ASSERT (lock != NULL);
 	ASSERT (!intr_context ());
 	ASSERT (!lock_held_by_current_thread (lock));
-
 	sema_down (&lock->semaphore);
 	lock->holder = thread_current ();
 }
@@ -248,7 +251,6 @@ struct semaphore_elem {
 void
 cond_init (struct condition *cond) {
 	ASSERT (cond != NULL);
-
 	list_init (&cond->waiters);
 }
 
@@ -283,11 +285,23 @@ cond_wait (struct condition *cond, struct lock *lock) {
 
 	sema_init (&waiter.semaphore, 0);
 	list_push_back (&cond->waiters, &waiter.elem);
+	//list_insert_ordered(&cond->waiters, &waiter.elem, sema_compare, NULL);
 	lock_release (lock);
 	sema_down (&waiter.semaphore);
 	lock_acquire (lock);
 }
 
+bool sema_compare(const struct list_elem* a, const struct list_elem* b, void* aux UNUSED){
+	//먼저 semaphore_elem 구조체를 구함 / ?둘중에 하나만 구해줘도 될거같음 확인해봐야함
+	struct semaphore_elem *sema_elem_a = list_entry(a, struct semaphore_elem, elem);
+	struct semaphore_elem *seam_elem_b = list_entry(b, struct semaphore_elem, elem);
+	//구조체의 elem의 semaphore의 waiters를 구함 //이번에 역산이 아니라 아래로 들어감
+	struct list *waiters_a = &(sema_elem_a->semaphore.waiters); 
+	struct list *watiers_b = &(seam_elem_b->semaphore.waiters);
+	
+	//각 waiters의 첫번째 스레드의 우선순위를 비교함
+	return list_entry(list_begin(waiters_a), struct thread, elem)->priority > list_entry(list_begin(watiers_b), struct thread, elem)->priority;
+}
 /* If any threads are waiting on COND (protected by LOCK), then
    this function signals one of them to wake up from its wait.
    LOCK must be held before calling this function.
@@ -301,7 +315,7 @@ cond_signal (struct condition *cond, struct lock *lock UNUSED) {
 	ASSERT (lock != NULL);
 	ASSERT (!intr_context ());
 	ASSERT (lock_held_by_current_thread (lock));
-
+	list_sort(&cond->waiters, sema_compare, NULL);
 	if (!list_empty (&cond->waiters))
 		sema_up (&list_entry (list_pop_front (&cond->waiters),
 					struct semaphore_elem, elem)->semaphore);

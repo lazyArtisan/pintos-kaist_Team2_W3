@@ -210,12 +210,12 @@ thread_create (const char *name, int priority,
 	t->tf.eflags = FLAG_IF;
 	/* Add to run queue. */
 	thread_unblock (t);
-	printf("create후 실행 스레드 : %s 	우선순위 : %d	상태 : %d\n", thread_current()->name, thread_current()->priority, thread_current()->status);
-	struct list_elem *e;
-	for(e = list_begin(&ready_list); e != list_end(&ready_list); e = list_next(e)){
-		struct thread *t = list_entry(e, struct thread, elem);
-		printf("create후 대기 스레드 : %s	우선순위 : %d	상태 : %d\n", t->name, t->priority, t->status);
-	}
+	// printf("create후 실행 스레드 : %s 	우선순위 : %d	상태 : %d\n", thread_current()->name, thread_current()->priority, thread_current()->status);
+	// struct list_elem *e;
+	// for(e = list_begin(&ready_list); e != list_end(&ready_list); e = list_next(e)){
+	// 	struct thread *t = list_entry(e, struct thread, elem);
+	// 	printf("create후 대기 스레드 : %s	우선순위 : %d	상태 : %d\n", t->name, t->priority, t->status);
+	// }
 	running_compare();
 	return tid;
 }
@@ -642,12 +642,12 @@ schedule (void) {
 		/* Before switching the thread, we first save the information
 		 * of current running. */
 		thread_launch (next);
-		printf("런치 후 실행 스레드 : %s 	우선순위 : %d	상태 : %d\n", thread_current()->name, thread_current()->priority, thread_current()->status);
-		struct list_elem *e;
-		for(e = list_begin(&ready_list); e != list_end(&ready_list); e = list_next(e)){
-			struct thread *t = list_entry(e, struct thread, elem);
-			printf("런치 후 대기 스레드 : %s 	우선순위 : %d	상태 : %d\n", t->name, t->priority, t->status);
-	}
+		// printf("런치 후 실행 스레드 : %s 	우선순위 : %d	상태 : %d\n", thread_current()->name, thread_current()->priority, thread_current()->status);
+		// struct list_elem *e;
+		// for(e = list_begin(&ready_list); e != list_end(&ready_list); e = list_next(e)){
+		// 	struct thread *t = list_entry(e, struct thread, elem);
+		// 	printf("런치 후 대기 스레드 : %s 	우선순위 : %d	상태 : %d\n", t->name, t->priority, t->status);
+		// }
 	}
 }
 
