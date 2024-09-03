@@ -90,8 +90,12 @@ struct thread {
 	tid_t tid;                          /* Thread identifier. */
 	enum thread_status status;          /* Thread state. */
 	char name[16];                      /* Name (for debugging purposes). */
-	int priority;                       /* Priority. */
-	int64_t time;							/* wake_up할 때까지 남은 시간 */
+	int priority;						/* Priority. */
+	int origin_priority;                /* 기부를 받을 때 기부를 받기전의 원래 우선순위를 저장하기 위한 변수 */
+	struct lock * need_that_lock;		/* 스레드가 필요한 락*/
+	struct list lock_waiter;				/* 릴리스 해야 할 락 리스트 */
+	struct list_elem lock_waiter_elem;
+	int64_t time;						/* wake_up할 때까지 남은 시간 */
 	/* Shared between thread.c and synch.c. */
 	struct list_elem elem;              /* List element. */
 

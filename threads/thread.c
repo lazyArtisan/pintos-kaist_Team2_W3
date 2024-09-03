@@ -210,12 +210,6 @@ thread_create (const char *name, int priority,
 	t->tf.eflags = FLAG_IF;
 	/* Add to run queue. */
 	thread_unblock (t);
-	// printf("create후 실행 스레드 : %s 	우선순위 : %d	상태 : %d\n", thread_current()->name, thread_current()->priority, thread_current()->status);
-	// struct list_elem *e;
-	// for(e = list_begin(&ready_list); e != list_end(&ready_list); e = list_next(e)){
-	// 	struct thread *t = list_entry(e, struct thread, elem);
-	// 	printf("create후 대기 스레드 : %s	우선순위 : %d	상태 : %d\n", t->name, t->priority, t->status);
-	// }
 	running_compare();
 	return tid;
 }
@@ -380,7 +374,8 @@ bool thread_time_compare(const struct list_elem* a, const struct list_elem* b, v
 /* Sets the current thread's priority to NEW_PRIORITY. */
 void
 thread_set_priority (int new_priority) {
-	thread_current ()->priority = new_priority;
+	thread_current()->origin_priority = new_priority;
+	refresh_priority();
 	running_compare();
 }
 
@@ -478,6 +473,9 @@ init_thread (struct thread *t, const char *name, int priority) {
 	strlcpy (t->name, name, sizeof t->name);
 	t->tf.rsp = (uint64_t) t + PGSIZE - sizeof (void *);
 	t->priority = priority;
+	t->origin_priority = priority;//기부받기 전 원래 우선순위
+	t->need_that_lock = NULL;
+	list_init(&t->lock_waiter);//스레드가 가진 락을 기다리는 스레드
 	t->magic = THREAD_MAGIC;
 }
 
@@ -642,12 +640,6 @@ schedule (void) {
 		/* Before switching the thread, we first save the information
 		 * of current running. */
 		thread_launch (next);
-		// printf("런치 후 실행 스레드 : %s 	우선순위 : %d	상태 : %d\n", thread_current()->name, thread_current()->priority, thread_current()->status);
-		// struct list_elem *e;
-		// for(e = list_begin(&ready_list); e != list_end(&ready_list); e = list_next(e)){
-		// 	struct thread *t = list_entry(e, struct thread, elem);
-		// 	printf("런치 후 대기 스레드 : %s 	우선순위 : %d	상태 : %d\n", t->name, t->priority, t->status);
-		// }
 	}
 }
 
