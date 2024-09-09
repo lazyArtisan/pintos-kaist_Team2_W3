@@ -163,13 +163,7 @@ error:
 
 /* 
 	Switch the current execution context to the f_name.
-	- 
   	Returns -1 on fail. 
-	- 실패하면 -1을 반환
- 	
-	공백 기준으로 여러 단어를 나누어지게 해야한다.
-	1. 프로그램 이름 2. 첫번째 인자
-	예를들어, process_exec("grep foo bar")는 foo,bar를 받아서 grep프로그램 실행
 */
 int
 process_exec (void *f_name) {
@@ -196,7 +190,7 @@ process_exec (void *f_name) {
 		return -1;
 
 	/* Start switched process. */
-	//hex_dump(_if.rsp, _if.rsp, KERN_BASE - _if.rsp, true);
+	hex_dump(_if.rsp, _if.rsp, USER_STACK - _if.rsp, true);
 	do_iret (&_if);
 	NOT_REACHED ();
 }
@@ -216,8 +210,8 @@ process_wait (tid_t child_tid UNUSED) {
 	/* XXX: Hint) The pintos exit if process_wait (initd), we recommend you
 	 * XXX:       to add infinite loop here before
 	 * XXX:       implementing the process_wait. */
-	
-	while(1);
+	int i = 0;
+	while(i < (1<<30)) i++;
 	return -1;
 }
 
@@ -343,6 +337,18 @@ load (const char *file_name, struct intr_frame *if_) {
 	bool success = false;
 	int i;
 
+	char *argv[128];
+	char *save_ptr, *token;
+	uint64_t *arg_addr[128];
+	int argc = 0;
+	token = strtok_r(file_name, " ", &save_ptr); //첫번 째 문자열
+	while(token != NULL){
+		argv[argc] = token;
+		argc++;
+		token = strtok_r(NULL, " ", &save_ptr);
+	}
+	argv[argc] = NULL;
+
 	/* Allocate and activate page directory. */
 	t->pml4 = pml4_create ();
 	if (t->pml4 == NULL)
@@ -428,46 +434,15 @@ load (const char *file_name, struct intr_frame *if_) {
 	/* Start address. */
 	if_->rip = ehdr.e_entry;
 
-	
-
 	/* 
 	TODO: Your code goes here.
 	TODO: Implement argument passing (see project2/argument_passing.html). 
 	*/
-	// char file_name_copy[128];
-	// memcpy(file_name_copy, file_name, strlen(file_name)+1);
-	// char *save_ptr, *token;
-	// char *arg_list[128];
-	// int argc = 0;
-	// token = strtok_r(file_name_copy, " ", &save_ptr); //첫번 째 문자열
-	// while(token != NULL){
-	// 	arg_list[argc] = token;
-	// 	argc++;
-	// 	token = strtok_r(NULL, " ", &save_ptr);
-	// }
-	// arg_list[argc] = NULL;
-	
-	//push_arg_stack(if_, arg_list, argc);
-	
-	success = true;
-
-done:
-	/* We arrive here whether the load is successful or not. */
-	file_close (file);
-	return success;
-}
-
-void push_arg_stack(struct intr_frame *if_, char *arg_list, int argc){
-	int i = argc;
-	for(i; i >=0; i--){
-		/*
-			arg_list 배열을 돌면서 역순으로 삽입
-			pop할 때 앞에 문자열 부터 인자로 넘어가야 하기 때문
-		*/
-		int len = strlen(arg_list[i-1]) + 1; //인자리스트의 길이
-		if_->rsp -= len; //문자열 넣을만큼 공간확보 
-		memcpy(if_->rsp, arg_list[i-1], len); // 문자열 복사
-		arg_list[i-1] = if_->rsp;//쓰고난 리스트에는 그 주소
+	for(i = argc -1; i >=0; i--){
+		int len = strlen(argv[i]) + 1; 
+		if_->rsp -= len; 
+		memcpy(if_->rsp, argv[i], len); 
+		arg_addr[i] = if_->rsp;
 	}
 	//8바이트 정렬
 	while(if_->rsp % 8 != 0){
@@ -475,21 +450,28 @@ void push_arg_stack(struct intr_frame *if_, char *arg_list, int argc){
 		*(uint8_t *)if_->rsp = 0;
 	}
 
-	//각 문자열의 주소 삽입, 포인터는 8바이트라 정렬 x
-	for(i; i >= 0; i--){
+	//각 문자열의 주소 삽입, 포인터는 64비트체제에서 8바이트라 정렬 x
+	for(i = argc; i >= 0; i--){
 		if_->rsp -= 8;
 		if(i == argc){
-			memset(if_->rsp, 0, sizeof(char**));
+			memset(if_->rsp, 0, 8);
 		} else {
-			memcpy(if_->rsp, &arg_list[i], sizeof(char *));
+			memcpy(if_->rsp, argv[i], 8);
 		}
 	} 
 	//return address 를 넣어줘야 됌
 	if_->rsp -= 8;
-	memset(if_->rsp, 0, sizeof(void*));
-
+	memset(if_->rsp, 0, 8);
+	//rdi라는 레지스터에는 1st argument, rsi에는 2nd argument
 	if_->R.rdi  = argc;
 	if_->R.rsi = if_->rsp + 8;
+	
+	success = true;
+
+done:
+	/* We arrive here whether the load is successful or not. */
+	file_close (file);
+	return success;
 }
 
 /* Checks whether PHDR describes a valid, loadable segment in
@@ -599,19 +581,6 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
 	}
 	return true;
 }
-
-/* Create a minimal stack by mapping a zeroed page at the USER_STACK 
-	2단계: 인자들을 스택에 저장
-	프로그램 인자를 처리하기 위해서는 인자들을 스택에 저장해야 합니다. Pintos에서는 각 스레드가 고유한 사용자 스택을 가지며, 여기에 프로그램 인자들을 저장할 수 있습니다.
-
-	setup_stack 함수에서 스택을 설정하는 부분에 인자 저장 로직을 추가해야 합니다. 인자를 스택에 저장하는 과정은 다음과 같은 단계를 거칩니다:
-
-	스택에 인자를 문자열로 저장: 스택에 각 인자를 복사합니다.
-	스택에 인자 포인터 저장: 각 인자의 시작 주소를 스택에 저장합니다.
-	argv 배열 생성: 인자 포인터들의 배열을 스택에 저장하고, 마지막으로 argv 배열의 주소를 스택에 저장합니다.
-	스택 정렬: x86-64 시스템에서는 스택이 16바이트로 정렬되어 있어야 합니다. 이를 위해 스택을 적절히 패딩해야 합니다.
-
-*/
 
 static bool
 setup_stack (struct intr_frame *if_) {

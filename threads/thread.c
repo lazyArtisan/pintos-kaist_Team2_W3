@@ -254,8 +254,12 @@ void running_compare()
 	//실행 중인 스레드의 우선순위가 ready_list의 맨 앞에 있는 스레드의 우선순위 보다 작으면 교체
 	if(!list_empty(&ready_list) && thread_current()->priority < list_entry(list_front(&ready_list), struct thread, elem)-> priority)
 	{
-		thread_yield();
+		if(intr_context()){
+	 		intr_yield_on_return();
+	 	}else{
+			thread_yield();
 	}
+}
 }
 
 
