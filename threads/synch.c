@@ -60,7 +60,6 @@ sema_init (struct semaphore *sema, unsigned value) {
 void
 sema_down (struct semaphore *sema) {
 	enum intr_level old_level;
-
 	ASSERT (sema != NULL);
 	ASSERT (!intr_context ());
 
@@ -69,6 +68,7 @@ sema_down (struct semaphore *sema) {
 		list_push_back(&sema->waiters, &thread_current()->elem);
 		thread_block ();
 	}
+	
 	sema->value--;
 	intr_set_level (old_level);
 }
@@ -195,12 +195,10 @@ lock_acquire (struct lock *lock) {
 				thread_current()->need_that_lock = lock;
 				list_insert_ordered(&lock->holder->lock_waiter, &thread_current()->lock_waiter_elem, donor_priority_compare, NULL);
 				donate();
-				
 			}
 	sema_down (&lock->semaphore);
 	thread_current()->need_that_lock = NULL;
 	lock->holder = thread_current();
-	
 }
 
 void donate(){
@@ -252,14 +250,15 @@ void
 lock_release (struct lock *lock) {
 	ASSERT (lock != NULL);
 	ASSERT (lock_held_by_current_thread (lock));
-	remove_with_lock (lock);
+	remove_lock (lock);
 	refresh_priority();
 	lock->holder = NULL;
 	sema_up (&lock->semaphore);
 }
 
+//lock_waiter와 일치하는 스레드만 삭제
 void
-remove_with_lock (struct lock *lock)
+remove_lock (struct lock *lock)
 {
   struct list_elem *e;
   struct thread *cur = thread_current ();
@@ -271,6 +270,7 @@ remove_with_lock (struct lock *lock)
   }
 }
 
+//원래의 우선수위로 복원해주고 웨이터에 스레드가 남아있으면 다시 기부받음.
 void
 refresh_priority (void)
 {

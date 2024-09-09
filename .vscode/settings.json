@@ -8,6 +8,8 @@
         "ostream": "c",
         "synch.h": "c",
         "debug.h": "c",
-        "list.h": "c"
+        "list.h": "c",
+        "atomic": "c",
+        "cstdint": "c"
     }
 }

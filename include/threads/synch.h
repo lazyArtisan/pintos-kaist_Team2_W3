@@ -42,7 +42,7 @@ void cond_broadcast (struct condition *, struct lock *);
 bool sema_compare(const struct list_elem* a, const struct list_elem* b, void* aux);
 void donate();
 bool donor_priority_compare(const struct list_elem* a, const struct list_elem* b, void* aux);
-void remove_with_lock (struct lock *lock);
+void remove_lock (struct lock *lock);
 void refresh_priority (void);
 /* Optimization barrier.
  *

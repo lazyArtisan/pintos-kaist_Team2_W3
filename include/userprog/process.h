@@ -10,4 +10,6 @@ int process_wait (tid_t);
 void process_exit (void);
 void process_activate (struct thread *next);
 
+//created by swpark
+void push_arg_stack(struct intr_frame *if_, char *arg_list, int argc);
 #endif /* userprog/process.h */
