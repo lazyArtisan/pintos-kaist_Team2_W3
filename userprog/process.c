@@ -42,7 +42,8 @@ tid_t
 process_create_initd (const char *file_name) {
 	char *fn_copy;
 	tid_t tid;
-
+	
+	
 	/* Make a copy of FILE_NAME.
 	 * Otherwise there's a race between the caller and load(). */
 	fn_copy = palloc_get_page (0);
@@ -51,6 +52,8 @@ process_create_initd (const char *file_name) {
 	strlcpy (fn_copy, file_name, PGSIZE);
 
 	/* Create a new thread to execute FILE_NAME. */
+	char * token, *saved_ptr;
+	token = strtok_r(file_name, " ", &saved_ptr);
 	tid = thread_create (file_name, PRI_DEFAULT, initd, fn_copy);
 	if (tid == TID_ERROR)
 		palloc_free_page (fn_copy);
@@ -190,7 +193,7 @@ process_exec (void *f_name) {
 		return -1;
 
 	/* Start switched process. */
-	hex_dump(_if.rsp, _if.rsp, USER_STACK - _if.rsp, true);
+	//hex_dump(_if.rsp, _if.rsp, USER_STACK - _if.rsp, true);
 	do_iret (&_if);
 	NOT_REACHED ();
 }
@@ -211,7 +214,7 @@ process_wait (tid_t child_tid UNUSED) {
 	 * XXX:       to add infinite loop here before
 	 * XXX:       implementing the process_wait. */
 	int i = 0;
-	while(i < (1<<30)) i++;
+	while(i < 1000000000) i++;
 	return -1;
 }
 
@@ -456,7 +459,7 @@ load (const char *file_name, struct intr_frame *if_) {
 		if(i == argc){
 			memset(if_->rsp, 0, 8);
 		} else {
-			memcpy(if_->rsp, argv[i], 8);
+			memcpy(if_->rsp, &arg_addr[i], 8);
 		}
 	} 
 	//return address 를 넣어줘야 됌
@@ -465,7 +468,6 @@ load (const char *file_name, struct intr_frame *if_) {
 	//rdi라는 레지스터에는 1st argument, rsi에는 2nd argument
 	if_->R.rdi  = argc;
 	if_->R.rsi = if_->rsp + 8;
-	
 	success = true;
 
 done:

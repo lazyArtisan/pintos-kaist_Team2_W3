@@ -10,6 +10,13 @@
         "debug.h": "c",
         "list.h": "c",
         "atomic": "c",
-        "cstdint": "c"
+        "cstdint": "c",
+        "syscall.h": "c",
+        "interrupt.h": "c",
+        "init.h": "c",
+        "filesys.h": "c",
+        "stdbool.h": "c",
+        "stdio.h": "c",
+        "lib.h": "c"
     }
 }

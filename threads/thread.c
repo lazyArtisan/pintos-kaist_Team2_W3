@@ -479,6 +479,8 @@ init_thread (struct thread *t, const char *name, int priority) {
 	t->priority = priority;
 	t->origin_priority = priority;//기부받기 전 원래 우선순위
 	t->need_that_lock = NULL;
+	t->exit_stauts = 0;
+	t->fd = 3;
 	list_init(&t->lock_waiter);//스레드가 가진 락을 기다리는 스레드
 	t->magic = THREAD_MAGIC;
 }
