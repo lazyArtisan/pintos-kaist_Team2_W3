@@ -17,6 +17,10 @@
         "filesys.h": "c",
         "stdbool.h": "c",
         "stdio.h": "c",
-        "lib.h": "c"
+        "lib.h": "c",
+        "file.h": "c",
+        "off_t.h": "c",
+        "*.inc": "c",
+        "inode.h": "c"
     }
 }

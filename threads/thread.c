@@ -481,6 +481,10 @@ init_thread (struct thread *t, const char *name, int priority) {
 	t->need_that_lock = NULL;
 	t->exit_stauts = 0;
 	t->fd = 3;
+	for(int i = t->fd; i <= MAX_FD; i++){
+		t->fd_table[i] = NULL;
+	}
+	
 	list_init(&t->lock_waiter);//스레드가 가진 락을 기다리는 스레드
 	t->magic = THREAD_MAGIC;
 }

@@ -163,7 +163,6 @@ inode_close (struct inode *inode) {
 			free_map_release (inode->data.start,
 					bytes_to_sectors (inode->data.length)); 
 		}
-
 		free (inode); 
 	}
 }

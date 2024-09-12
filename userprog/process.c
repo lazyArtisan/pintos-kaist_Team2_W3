@@ -180,7 +180,7 @@ process_exec (void *f_name) {
 	_if.ds = _if.es = _if.ss = SEL_UDSEG;
 	_if.cs = SEL_UCSEG;
 	_if.eflags = FLAG_IF | FLAG_MBS;
-
+	
 	/* We first kill the current context */
 	process_cleanup ();
 
@@ -214,7 +214,10 @@ process_wait (tid_t child_tid UNUSED) {
 	 * XXX:       to add infinite loop here before
 	 * XXX:       implementing the process_wait. */
 	int i = 0;
-	while(i < 1000000000) i++;
+	while(i < 1<<30) i++;
+	i = 0;
+	while(i < 1<<30) i++;
+	i = 0;
 	return -1;
 }
 
