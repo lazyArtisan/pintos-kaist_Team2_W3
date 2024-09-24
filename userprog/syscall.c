@@ -35,7 +35,7 @@ void syscall_handler (struct intr_frame *);
 
 void halt (void);
 void exit (int status);
-int exec (const char *cmd_line);
+int exec (const char *file);
 bool create (const char *file, unsigned initial_size);
 bool remove (const char *file);
 int open (const char *file);
@@ -45,6 +45,7 @@ int write (int fd, const void *buffer, unsigned size);
 void seek (int fd, unsigned position);
 unsigned tell (int fd);
 void close (int fd);
+int fork (const char *thread_name, struct intr_frame* f);
 
 void
 syscall_init (void) {
@@ -72,7 +73,7 @@ void halt(){
 }
 
 void exit(int status){
-	thread_current()->exit_stauts = status;
+	thread_current()->exit_status = status;
 	printf("%s: exit(%d)\n", thread_current()->name, status);
 	thread_exit();
 }
@@ -181,32 +182,14 @@ int filesize(int fd){
 	struct file *f = t->fd_table[fd];
 	return file_length(f);
 }
-/*
-	현재의 프로세스가 cmd_line에서 이름이 주어지는 실행가능한 프로세스로 변경됩니다.
-	이때 주어진 인자들을 전달합니다. 성공적으로 진행된다면 어떤 것도 반환하지 않습니다. 
-	만약 프로그램이 이 프로세스를 로드하지 못하거나 다른 이유로 돌리지 못하게 되면 exit state -1을 반환하며 프로세스가 종료됩니다. 
-	이 함수는 exec 함수를 호출한 쓰레드의 이름은 바꾸지 않습니다. file descriptor는 exec 함수 호출 시에 열린 상태로 있다는 것을 알아두세요
-*/
+
 int exec (const char *file){
-	char* temp = 
 	process_exec(file);
 }
 
-/*
-
-THREAD_NAME이라는 이름을 가진 현재 프로세스의 복제본인 새 프로세스를 만듭니다.
-피호출자(callee) 저장 레지스터인 %RBX, %RSP, %RBP와 %R12 - %R15를 제외한 레지스터 값을 복제할 필요가 없습니다. 
-자식 프로세스의 pid를 반환해야 합니다. 그렇지 않으면 유효한 pid가 아닐 수 있습니다. 자식 프로세스에서 반환 값은 0이어야 합니다. 
-자식 프로세스에는 파일 식별자 및 가상 메모리 공간을 포함한 복제된 리소스가 있어야 합니다. 
-부모 프로세스는 자식 프로세스가 성공적으로 복제되었는지 여부를 알 때까지 fork에서 반환해서는 안 됩니다. 
-즉, 자식 프로세스가 리소스를 복제하지 못하면 부모의 fork() 호출이 TID_ERROR를 반환할 것입니다.
-템플릿은 `threads/mmu.c`의 `pml4_for_each`를 사용하여 해당되는 페이지 테이블 구조를 포함한 전체 사용자 메모리 공간을 복사하지만, 
-전달된 `pte_for_each_func`의 누락된 부분을 채워야 합니다.
-
-*/
-// pid_t fork (const char *thread_name){
-	
-// }
+int fork (const char *thread_name, struct intr_frame* f){
+	return process_fork(thread_name, f);
+}
 
 void
 syscall_handler (struct intr_frame *f UNUSED) {
@@ -245,12 +228,12 @@ syscall_handler (struct intr_frame *f UNUSED) {
 	case SYS_FILESIZE:
 		f->R.rax = filesize(f->R.rdi);
 		break;
-	case SYS_EXEC:
-		f->R.rax = exec(f->R.rdi);
-		break;
-	// case SYS_FORK:
-	// 	f->R.rax = fork(f->R.rdi);
+	// case SYS_EXEC:
+	// 	f->R.rax = exec(f->R.rdi);
 	// 	break;
+	case SYS_FORK:
+		f->R.rax = fork(f->R.rdi, f);
+		break;
 	default:
 		exit(-1);
 	}

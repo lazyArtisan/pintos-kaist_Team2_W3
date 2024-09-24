@@ -5,6 +5,7 @@
 #include <list.h>
 #include <stdint.h>
 #include "threads/interrupt.h"
+#include "threads/synch.h"
 #ifdef VM
 #include "vm/vm.h"
 #endif
@@ -96,7 +97,7 @@ struct thread {
 	struct list lock_waiter;				/* 릴리스 해야 할 락 리스트 */
 	struct list_elem lock_waiter_elem;
 	int64_t time;						/* wake_up할 때까지 남은 시간 */
-	int exit_stauts;					//exit 시스템콜 시 상태를 저장할 변수
+	int exit_status;					//exit 시스템콜 시 상태를 저장할 변수
 	struct file *fd_table[MAX_FD];		//fd 테이블
 	int fd;								//fd 인데스 값
 	/* Shared between thread.c and synch.c. */
@@ -112,6 +113,11 @@ struct thread {
 #endif
 
 	/* Owned by thread.c. */
+	struct file* running;
+	struct semaphore load_sema;
+	struct list child_list;
+	struct list_elem child_elem;
+	struct intr_frame* parent_if;
 	struct intr_frame tf;               /* Information for switching */
 	unsigned magic;                     /* Detects stack overflow. */
 };

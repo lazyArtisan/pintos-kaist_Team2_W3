@@ -197,7 +197,7 @@ thread_create (const char *name, int priority,
 	/* Initialize thread. */
 	init_thread (t, name, priority);
 	tid = t->tid = allocate_tid ();//스레드 ID
-
+	list_push_back(&thread_current()->child_list, &t->child_elem);
 	/* Call the kernel_thread if it scheduled.
 	 * Note) rdi is 1st argument, and rsi is 2nd argument. */
 	t->tf.rip = (uintptr_t) kernel_thread;
@@ -479,13 +479,15 @@ init_thread (struct thread *t, const char *name, int priority) {
 	t->priority = priority;
 	t->origin_priority = priority;//기부받기 전 원래 우선순위
 	t->need_that_lock = NULL;
-	t->exit_stauts = 0;
+	t->exit_status = 0;
 	t->fd = 3;
 	for(int i = t->fd; i <= MAX_FD; i++){
 		t->fd_table[i] = NULL;
 	}
 	
 	list_init(&t->lock_waiter);//스레드가 가진 락을 기다리는 스레드
+	list_init(&t->child_list);
+	sema_init(&t->load_sema, 0);
 	t->magic = THREAD_MAGIC;
 }
 
