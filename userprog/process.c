@@ -52,8 +52,8 @@ process_create_initd (const char *file_name) {
 	strlcpy (fn_copy, file_name, PGSIZE);
 
 	/* Create a new thread to execute FILE_NAME. */
-	char * token, *saved_ptr;
-	token = strtok_r(file_name, " ", &saved_ptr);
+	char *save_ptr;
+    strtok_r(file_name, " ", &save_ptr);
 	tid = thread_create (file_name, PRI_DEFAULT, initd, fn_copy);
 	if (tid == TID_ERROR)
 		palloc_free_page (fn_copy);
@@ -80,8 +80,7 @@ tid_t
 process_fork (const char *name, struct intr_frame *if_ UNUSED) {
 	/* Clone current thread to new thread.*/
 	struct thread *cur = thread_current();
-    // memcpy(&cur->parent_if, if_, sizeof(struct intr_frame));
-	cur->parent_if = if_;
+    memcpy(&cur->parent_if, if_, sizeof(struct intr_frame));
 	tid_t pid = thread_create(name, PRI_DEFAULT, __do_fork, cur);
     if (pid == TID_ERROR)
         return TID_ERROR;
@@ -251,12 +250,15 @@ process_wait (tid_t child_tid UNUSED) {
 	/* XXX: Hint) The pintos exit if process_wait (initd), we recommend you
 	 * XXX:       to add infinite loop here before
 	 * XXX:       implementing the process_wait. */
-	int i = 0;
-	while(i < 1<<30) i++;
-	i = 0;
-	while(i < 1<<30) i++;
-	i = 0;
-	return -1;
+	struct thread *child = get_child_process(child_tid);
+    if (child == NULL)
+        return -1;
+	sema_down(&child->wait_sema);
+    // 3) 자식이 종료됨을 알리는 `wait_sema` signal을 받으면 현재 스레드(부모)의 자식 리스트에서 제거한다.
+    list_remove(&child->child_elem);
+    // 4) 자식이 완전히 종료되고 스케줄링이 이어질 수 있도록 자식에게 signal을 보낸다.
+    sema_up(&child->exit_sema);
+	return child->exit_status;
 }
 
 /* Exit the process. This function is called by thread_exit (). */
@@ -267,8 +269,12 @@ process_exit (void) {
 	 * TODO: Implement process termination message (see
 	 * TODO: project2/process_termination.html).
 	 * TODO: We recommend you to implement process resource cleanup here. */
+	// for (int i = 3; i < MAX_FD; i++)
+    //     file_close(i);
 	file_close(curr->running);
 	process_cleanup ();
+	sema_up(&curr->wait_sema);
+	sema_down(&curr->exit_sema);
 }
 
 /* Free the current process's resources. */
@@ -380,10 +386,9 @@ load (const char *file_name, struct intr_frame *if_) {
 	off_t file_ofs;
 	bool success = false;
 	int i;
-
-	char *argv[128];
+	char *argv[64];
 	char *save_ptr, *token;
-	uint64_t *arg_addr[128];
+	uint64_t *arg_addr[64];
 	int argc = 0;
 	token = strtok_r(file_name, " ", &save_ptr); //첫번 째 문자열
 	while(token != NULL){

@@ -488,6 +488,8 @@ init_thread (struct thread *t, const char *name, int priority) {
 	list_init(&t->lock_waiter);//스레드가 가진 락을 기다리는 스레드
 	list_init(&t->child_list);
 	sema_init(&t->load_sema, 0);
+	sema_init(&t->exit_sema, 0);
+    sema_init(&t->wait_sema, 0);
 	t->magic = THREAD_MAGIC;
 }
 

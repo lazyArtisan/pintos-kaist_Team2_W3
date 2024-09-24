@@ -46,6 +46,7 @@ void seek (int fd, unsigned position);
 unsigned tell (int fd);
 void close (int fd);
 int fork (const char *thread_name, struct intr_frame* f);
+int wait(int pid);
 
 void
 syscall_init (void) {
@@ -184,11 +185,20 @@ int filesize(int fd){
 }
 
 int exec (const char *file){
-	process_exec(file);
+	check_addr(file);
+	char *fn_copy = palloc_get_page(0);
+    if (fn_copy == NULL)
+        exit(-1);    
+    strlcpy(fn_copy, file, PGSIZE);
+	if(process_exec(fn_copy) == -1) exit(-1);
 }
 
 int fork (const char *thread_name, struct intr_frame* f){
 	return process_fork(thread_name, f);
+}
+
+int wait(int pid){
+	return process_wait(pid);
 }
 
 void
@@ -228,11 +238,14 @@ syscall_handler (struct intr_frame *f UNUSED) {
 	case SYS_FILESIZE:
 		f->R.rax = filesize(f->R.rdi);
 		break;
-	// case SYS_EXEC:
-	// 	f->R.rax = exec(f->R.rdi);
-	// 	break;
+	case SYS_EXEC:
+		f->R.rax = exec(f->R.rdi);
+		break;
 	case SYS_FORK:
 		f->R.rax = fork(f->R.rdi, f);
+		break;
+	case SYS_WAIT:
+		f->R.rax = wait(f->R.rdi);
 		break;
 	default:
 		exit(-1);

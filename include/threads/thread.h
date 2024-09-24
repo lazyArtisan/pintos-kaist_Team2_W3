@@ -115,9 +115,11 @@ struct thread {
 	/* Owned by thread.c. */
 	struct file* running;
 	struct semaphore load_sema;
+	struct semaphore exit_sema;
+	struct semaphore wait_sema;
 	struct list child_list;
 	struct list_elem child_elem;
-	struct intr_frame* parent_if;
+	struct intr_frame parent_if;
 	struct intr_frame tf;               /* Information for switching */
 	unsigned magic;                     /* Detects stack overflow. */
 };

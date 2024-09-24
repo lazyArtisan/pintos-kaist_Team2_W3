@@ -21,6 +21,11 @@
         "file.h": "c",
         "off_t.h": "c",
         "*.inc": "c",
-        "inode.h": "c"
+        "inode.h": "c",
+        "iosfwd": "c",
+        "istream": "c",
+        "limits": "c",
+        "sstream": "c",
+        "streambuf": "c"
     }
 }
