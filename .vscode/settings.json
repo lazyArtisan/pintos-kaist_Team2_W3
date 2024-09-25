@@ -26,6 +26,9 @@
         "istream": "c",
         "limits": "c",
         "sstream": "c",
-        "streambuf": "c"
+        "streambuf": "c",
+        "string_view": "c",
+        "exception": "c",
+        "new": "c"
     }
 }

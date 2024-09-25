@@ -181,13 +181,18 @@ __do_fork (void *aux) {
 	 * TODO:       in include/filesys/file.h. Note that parent should not return
 	 * TODO:       from the fork() until this function successfully duplicates
 	 * TODO:       the resources of parent.*/
-	for (int i = 0; i < MAX_FD; i++){
-		struct file* file = parent->fd_table[i];
-		if(file == NULL) continue;
-		if(file > 2){
-			file = file_duplicate(file);
-		current->fd_table[i] = file;
+	for (int i = 3; i < MAX_FD; i++){
+		if(parent->fd_table[i] != NULL){
+			struct file* temp = file_duplicate(parent->fd_table[i]);
+			current->fd_table[i] = temp;
 		}
+		// struct file* file = parent->fd_table[i];
+		// struct file* temp;
+		// if(file == NULL) continue;
+		// else if(i > 2){
+		// 	temp = file_duplicate(file);
+		// current->fd_table[i] = temp;
+		// }
 	}
 	current->fd = parent->fd;
 	sema_up(&current->load_sema);
@@ -386,9 +391,9 @@ load (const char *file_name, struct intr_frame *if_) {
 	off_t file_ofs;
 	bool success = false;
 	int i;
-	char *argv[64];
+	char *argv[32];
 	char *save_ptr, *token;
-	uint64_t *arg_addr[64];
+	uint64_t *arg_addr[32];
 	int argc = 0;
 	token = strtok_r(file_name, " ", &save_ptr); //첫번 째 문자열
 	while(token != NULL){

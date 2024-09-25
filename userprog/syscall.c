@@ -94,14 +94,14 @@ int open (const char *file){
 	check_addr(file);
 
 	struct thread* t = thread_current();
-	int cur_fd = t->fd;
+	int cur_fd;
 	struct file *f = filesys_open(file);
 	if(f == NULL){
 		return -1;
 	} 
 	else{
 		for(int i = 3; i < MAX_FD; i++){
-			if (t->fd_table[i] == NULL) {
+			if (t->fd_table[i] == NULL) {// talbe의 null값이 경우에 해당 인덱스를 fd로 줌 null이 없다면?
 				cur_fd = i;
 				break;
 			}
@@ -151,19 +151,16 @@ int read (int fd, void *buffer, unsigned size){
         }
         return size;
     }
-    
-    if (fd == 1 || fd == 2 || fd >= MAX_FD) {
+    if (fd < 0 || fd == 1 || fd == 2 || fd >= MAX_FD) {
         exit(-1);
     }
-	
-	if(fd < 0 || fd >= MAX_FD){
-		exit(-1);
-	}
+
 	struct file *f = t->fd_table[fd];
 	if(f == NULL){
 		exit(-1);
 	}
-	return file_read(f, buffer, size);
+	int file_count = file_read(f, buffer, size);
+	return file_count;
 }
 
 void seek(int fd, unsigned position){
@@ -229,6 +226,7 @@ syscall_handler (struct intr_frame *f UNUSED) {
 		break;
 	case SYS_READ:
 		f->R.rax = read(f->R.rdi, f->R.rsi, f->R.rdx);
+		break;
 	case SYS_SEEK:
 		seek(f->R.rdi,f->R.rsi);
 		break;
