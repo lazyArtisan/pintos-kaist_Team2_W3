@@ -57,6 +57,24 @@ vm_alloc_page_with_initializer (enum vm_type type, void *upage, bool writable,
 		 * TODO: should modify the field after calling the uninit_new. */
 
 		/* TODO: Insert the page into the spt. */
+		struct page *p = (struct page *)malloc(sizeof(struct page));
+		bool (*page_init)(struct page *, enum vm_type, void *);
+
+		switch (VM_TYPE(type))
+		{
+		case VM_ANON:
+			page_init = anon_initializer;
+			break;
+		case VM_FILE:
+			page_init = file_backed_initializer;
+			break;
+		}
+		uninit_new(p, upage, init, type, aux, page_init);
+		
+		p->writable = writable;
+
+		/* TODO: Insert the page into the spt. */
+		return spt_insert_page(spt, p);
 	}
 err:
 	return false;
@@ -157,8 +175,24 @@ vm_try_handle_fault (struct intr_frame *f UNUSED, void *addr UNUSED,
 	struct page *page = NULL;
 	/* TODO: Validate the fault */
 	/* TODO: Your code goes here */
+	if (addr == NULL)
+		return false;
 
-	return vm_do_claim_page (page);
+	if (is_kernel_vaddr(addr))
+		return false;
+
+	if (not_present) // 접근한 메모리의 physical page가 존재하지 않은 경우
+	{
+		/* TODO: Validate the fault */
+
+		page = spt_find_page(spt, addr);
+		if (page == NULL)
+			return false;
+		if (write == 1 && page->writable == 0) // write 불가능한 페이지에 write 요청한 경우
+			return false;
+		return vm_do_claim_page(page);
+	}
+	return false;
 }
 
 /* Free the page.
@@ -192,8 +226,7 @@ vm_do_claim_page (struct page *page) {
 
 	/* TODO: Insert page table entry to map page's VA to frame's PA. */
 	// 가상 주소와 물리 주소를 매핑
-	struct thread *current = thread_current();
-	pml4_set_page(current->pml4, page->va, frame->kva, page->writable);
+	pml4_set_page(thread_current()->pml4, page->va, frame->kva, page->writable);
 
 	return swap_in(page, frame->kva); // uninit_initialize
 }
